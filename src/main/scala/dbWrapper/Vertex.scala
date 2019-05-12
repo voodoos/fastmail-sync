@@ -1,9 +1,9 @@
-package DBWrapper
+package dbWrapper
 
 import com.orientechnologies.orient.core.db.ODatabaseSession
 import com.orientechnologies.orient.core.record.{OElement, OVertex}
 
-abstract class Vertex(protected val vertex : OVertex, _class: Class) extends Element(vertex, _class) {
+abstract class Vertex(protected val vertex : OVertex) extends Element(vertex) {
   def getVertex : OVertex = vertex
 }
 

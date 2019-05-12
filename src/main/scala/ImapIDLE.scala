@@ -12,7 +12,7 @@ class ImapIDLE(val client : ImapAccount, val folder: Folder) extends Runnable {
     // RAII
     Using(client.new_connection()) {
       store =>
-        assert(store.hasCapability("IDLE"), "Server does not support IDLE")
+        require(store.hasCapability("IDLE"), "Server does not support IDLE")
 
         Using(store.getFolder(folder.getName).asInstanceOf[IMAPFolder]) {
           inbox =>

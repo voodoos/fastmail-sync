@@ -20,7 +20,7 @@ class ODBMail(config : DBConfig, clean : Boolean = false) extends ODBWrapper(con
   }
 
   private def getSubFolders(parent: OVertex) = {
-    parent.getVertices(ODirection.IN, "SubFolder").asScala.map(fv => new DBWrapper.Folder(fv))
+    parent.getVertices(ODirection.IN, "SubFolder").asScala.map(fv => new dbWrapper.Folder(fv))
   }
 
   /**
@@ -38,7 +38,7 @@ class ODBMail(config : DBConfig, clean : Boolean = false) extends ODBWrapper(con
     // it is removed from the list.
     // Remaining folders in the list are not on the server anymore,
     // we delete them.
-    var knownFolders : Iterable[DBWrapper.Folder] = getSubFolders(parent)
+    var knownFolders : Iterable[dbWrapper.Folder] = getSubFolders(parent)
 
     folders.foreach(f => {
       //if (first) Debug.info("In folder " + f.getFullName)
@@ -49,7 +49,7 @@ class ODBMail(config : DBConfig, clean : Boolean = false) extends ODBWrapper(con
       try {
         // Folder creation will fail if it is a duplicate
         //Debug.info("Attempt to create folder: " + f.getFullName)
-        vf = DBWrapper.Folder.create_from_IMAPFolder(f.asInstanceOf[IMAPFolder]).getVertex
+        vf = dbWrapper.Folder.create_from_IMAPFolder(f.asInstanceOf[IMAPFolder]).getVertex
         Debug.info("New folder: " + f.getFullName)
 
         // Set the new folder parent
@@ -98,7 +98,7 @@ def fetch_mails(folder: IMAPFolder, vfolder: OVertex): Unit = {
   folder.open(Folder.READ_ONLY)
   folder.getMessages.foreach(m =>
     try{
-      DBWrapper.Message.create_from_IMAPMessage(m.asInstanceOf[IMAPMessage], Some(vfolder))
+      dbWrapper.Message.create_from_IMAPMessage(m.asInstanceOf[IMAPMessage], Some(vfolder))
     } catch {
       case e: ORecordDuplicatedException =>
         Debug.warn("Duplicate mail: " + e.getMessage)
@@ -135,7 +135,7 @@ override protected def init_schema(): Unit = {
   createProperty(message, "body", OType.STRING, Some(OClass.INDEX_TYPE.FULLTEXT))
 
   /* TESTS */
-  DBWrapper.Init.setTestData()
+  dbWrapper.Init.setTestData()
 }
 }
 

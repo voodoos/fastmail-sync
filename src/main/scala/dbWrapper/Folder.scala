@@ -1,33 +1,26 @@
-package DBWrapper
+package dbWrapper
 
 import com.orientechnologies.orient.core.db.ODatabaseSession
 import com.orientechnologies.orient.core.record.{ODirection, OVertex}
 import com.sun.mail.imap.IMAPFolder
 
+import traits._
+
 import collection.JavaConverters._
 import scala.util.{Failure, Success, Using}
 
-object FolderProperties {
-  sealed class FolderProperty(override val name: String) extends Property(name)
 
-  case object FullName extends FolderProperty("full_name") {
-    type U = String
-  }
-  case object UIDValidity extends FolderProperty("uid_validity") {
-    type U = Integer
-  }
-}
 
-case object FolderClass extends Class(name = "Folder")
 
-class Folder(private val folder_vertex : OVertex) extends Vertex(folder_vertex, FolderClass) {
+class Folder(private val folder_vertex : OVertex)
+  extends Vertex(folder_vertex) {
 
   def FullName: String = {
-    getProperty(FolderProperties.FullName)
+    getProperty(Folder.Props.FullName)
   }
 
   def UIDValidity: Integer = {
-    getProperty(FolderProperties.UIDValidity)
+    getProperty(Folder.Props.UIDValidity)
   }
 
   def getMessages: Iterable[Message] = {
@@ -39,15 +32,18 @@ class Folder(private val folder_vertex : OVertex) extends Vertex(folder_vertex, 
     super.delete()
   }
 
-  override def init_schema(implicit db : ODatabaseSession): Unit = {
-    if(!class_exists(db)) {
-
-    }
-  }
 }
 
-object Folder {
-  def get(full_name : FolderProperties.FullName.U, uid_validity : FolderProperties.UIDValidity.U)(implicit db : ODatabaseSession) : Option[Folder] = {
+object Folder extends Schema {
+  object Props {
+    sealed class FolderProperty(override val name: String) extends Property(name)
+
+    case object FullName extends FolderProperty("full_name") { type U = String }
+    case object UIDValidity extends FolderProperty("uid_validity") { type U = Integer }
+  }
+  case object Class extends Class(name = "Folder")
+
+  def get(full_name : Props.FullName.U, uid_validity : Props.UIDValidity.U)(implicit db : ODatabaseSession) : Option[Folder] = {
     val query = "SELECT * from Folder where full_name = ? and uid_validity = ? LIMIT 1"
     Using(db.query(query, full_name,  uid_validity)) {
       results => results.next()
@@ -64,5 +60,12 @@ object Folder {
     vf.setProperty("uid_validity", f.getUIDValidity)
     vf.save()
     new Folder(vf)
+  }
+
+  // Implements Schema
+  override def init_schema(implicit db : ODatabaseSession): Unit = {
+    if(!Tools.class_exists(Class)) {
+
+    }
   }
 }
