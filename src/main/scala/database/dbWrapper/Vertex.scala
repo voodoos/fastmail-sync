@@ -1,4 +1,4 @@
-package dbWrapper
+package database.dbWrapper
 
 import com.orientechnologies.orient.core.db.ODatabaseSession
 import com.orientechnologies.orient.core.record.{OElement, OVertex}

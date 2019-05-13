@@ -1,4 +1,3 @@
 src/main/scala/DBWrapper/Init.scala
 .idea
-target
-project
+target/

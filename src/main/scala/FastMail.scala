@@ -1,11 +1,11 @@
-import ImapConfig.Config
+import database.ImapConfig
 
 import scala.util.{Try, Using}
 
 object FastMail extends App {
   println("Hello, world!")
 
-  val conf = Config("imap.laposte.net", "thevoodoos@laposte.net", "Rutaba9a", ImapConfig.IMAP)
+  //val conf = Config("imap.laposte.net", "thevoodoos@laposte.net", "Rutaba9a", ImapConfig.IMAP)
   //val client =  new ImapAccount(ImapConfig("mail.lotophages.fr", "ulysse@u31.fr", ""))
 
   /*client.folders().foreach(f => {

@@ -1,3 +1,5 @@
+package database
+
 import com.orientechnologies.orient.core.db.{ODatabaseSession, OrientDB, OrientDBConfig}
 import com.orientechnologies.orient.core.metadata.schema.{OClass, OProperty, OType}
 

@@ -1,3 +1,5 @@
+package tools
+
 object Debug {
   private var debugging = true
 

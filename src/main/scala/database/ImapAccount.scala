@@ -1,9 +1,11 @@
+package database
+
 import java.util.Properties
 
 import com.sun.mail.imap.{IMAPFolder, IMAPStore}
-import javax.mail.{Folder, _}
+import database.ImapConfig.Config
 import javax.mail.event.{MessageChangedEvent, MessageChangedListener, MessageCountAdapter, MessageCountEvent}
-import ImapConfig.Config
+import javax.mail.{Folder, _}
 
 
 

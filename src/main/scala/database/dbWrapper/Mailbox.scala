@@ -1,7 +1,7 @@
-package dbWrapper
+package database.dbWrapper
 
 import com.orientechnologies.orient.core.db.ODatabaseSession
-import dbWrapper.traits.Schema
+import database.dbWrapper.traits.Schema
 
 
 

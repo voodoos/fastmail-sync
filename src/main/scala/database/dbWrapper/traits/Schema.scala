@@ -1,4 +1,4 @@
-package dbWrapper.traits
+package database.dbWrapper.traits
 
 import com.orientechnologies.orient.core.db.ODatabaseSession
 

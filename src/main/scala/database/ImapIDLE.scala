@@ -1,3 +1,5 @@
+package database
+
 import java.net.SocketException
 
 import com.sun.mail.imap.IMAPFolder

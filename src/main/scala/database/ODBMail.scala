@@ -1,8 +1,11 @@
+package database
+
 import com.orientechnologies.orient.core.metadata.schema.{OClass, OType}
 import com.orientechnologies.orient.core.record.{ODirection, OVertex}
 import com.orientechnologies.orient.core.storage.ORecordDuplicatedException
 import com.sun.mail.imap.{IMAPFolder, IMAPMessage}
 import javax.mail.Folder
+import tools.Debug
 
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Using}
