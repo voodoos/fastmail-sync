@@ -135,7 +135,7 @@ override protected def init_schema(): Unit = {
   createProperty(message, "body", OType.STRING, Some(OClass.INDEX_TYPE.FULLTEXT))
 
   /* TESTS */
-  dbWrapper.Init.setTestData()
+  //dbWrapper.Init.setTestData()
 }
 }
 

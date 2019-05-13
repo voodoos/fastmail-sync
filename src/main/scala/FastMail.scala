@@ -24,7 +24,7 @@ object FastMail extends App {
 */
 
   // RAII
-    def res = Using(new ImapAccount(conf)) {
+   /* def res = Using(new ImapAccount(conf)) {
       imap =>
         def res : Try[Unit] = Using(new ODBMail (DBConfig("remote:localhost","fastmail", "root", "root"), true)) {
           orient => orient.sync_folders(imap.top_folders(), orient.getMailBox(conf.user))
@@ -41,5 +41,5 @@ object FastMail extends App {
       println("Imap error: \n" + e.getMessage)
       throw e
     case _ => ()
-  }
+  }*/
 }
