@@ -7,13 +7,14 @@ import akka.http.scaladsl.server.Directives.{handleWebSocketMessages, path}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
 
+import scala.concurrent.ExecutionContextExecutor
 import scala.io.StdIn
 
 object WebSocketServer {
-  implicit val system = ActorSystem("my-system")
-  implicit val materializer = ActorMaterializer()
+  implicit val system : ActorSystem = ActorSystem("my-system")
+  implicit val materializer : ActorMaterializer = ActorMaterializer()
   // needed for the future flatMap/onComplete in the end
-  implicit val executionContext = system.dispatcher
+  implicit val executionContext : ExecutionContextExecutor = system.dispatcher
 
   def greeter: Flow[Message, Message, Any] =
     Flow[Message].mapConcat {
