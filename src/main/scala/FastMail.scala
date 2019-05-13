@@ -5,6 +5,12 @@ import scala.util.{Try, Using}
 object FastMail extends App {
   println("Hello, world!")
 
+
+  server.WebSocketServer.run()
+
+
+
+
   //val conf = Config("imap.laposte.net", "thevoodoos@laposte.net", "Rutaba9a", ImapConfig.IMAP)
   //val client =  new ImapAccount(ImapConfig("mail.lotophages.fr", "ulysse@u31.fr", ""))
 
