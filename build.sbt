@@ -39,6 +39,10 @@ lazy val server = (project in file("server"))
     libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-http"   % "10.1.8",
       "com.typesafe.akka" %% "akka-stream" % "2.5.19",
-      "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.8"
+      "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.8",
+      "de.heikoseeberger" %% "akka-sse" % "3.0.0",
+      "org.sangria-graphql" % "sangria_2.12" % "1.4.2",
+      "org.sangria-graphql" % "sangria-spray-json_2.12" % "1.0.1",
+      "org.sangria-graphql" % "sangria-akka-streams_2.12" % "1.0.1"
     )
   )
