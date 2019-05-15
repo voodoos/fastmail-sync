@@ -10,6 +10,7 @@ import akka.stream.scaladsl.{Flow, Sink, Source}
 import scala.concurrent.ExecutionContextExecutor
 import scala.io.StdIn
 
+
 object WebSocketServer {
   implicit val system : ActorSystem = ActorSystem("my-system")
   implicit val materializer : ActorMaterializer = ActorMaterializer()
@@ -19,8 +20,11 @@ object WebSocketServer {
   def greeter: Flow[Message, Message, Any] =
     Flow[Message].mapConcat {
       case tm: TextMessage =>
-        val i = WSMessage("totoit")//, )
-        TextMessage(Source.single(MyJsonProtocol.wSFormat.write(i).toString())) :: Nil
+        import api.model._
+        import api.JsonProtocol._
+        import spray.json._
+        val i = api.WSMessage("message", Message("messid", "sujet"))//, )
+        TextMessage(Source.single(i.toJson.compactPrint)) :: Nil
 
       //TextMessage(Source.single("Hello ") ++ tm.textStream ++ Source.single("!")) :: Nil
       case bm: BinaryMessage =>
