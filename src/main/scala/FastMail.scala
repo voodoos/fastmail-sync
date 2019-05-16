@@ -1,6 +1,6 @@
 import database.ImapConfig
 
-import scala.util.{Try, Using}
+import tools.{Try, Using}
 
 object FastMail extends App {
   println("Hello, world!")

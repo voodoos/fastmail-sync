@@ -8,7 +8,7 @@ import javax.mail.Folder
 import tools.Debug
 
 import scala.collection.JavaConverters._
-import scala.util.{Failure, Success, Using}
+import tools.{Failure, Success, Using}
 
 class ODBMail(config : DBConfig, clean : Boolean = false) extends ODBWrapper(config, clean) {
 
