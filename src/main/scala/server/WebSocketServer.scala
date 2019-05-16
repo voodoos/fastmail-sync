@@ -12,34 +12,56 @@ import akka.stream.ActorMaterializer
 import akka.stream.actor.{ActorPublisher, ActorSubscriber}
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.Timeout
+import generic.{Event, MemoryEventStore}
 import sangria.ast.OperationType
 import sangria.execution.{ErrorWithResolver, Executor, QueryAnalysisError}
+import sangria.marshalling.sprayJson._
 import sangria.parser.{QueryParser, SyntaxError}
 import spray.json._
 
-import scala.concurrent.ExecutionContextExecutor
+import scala.concurrent.duration._
 import scala.io.StdIn
+import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
-object WebSocketServer {
-  implicit val system : ActorSystem = ActorSystem("my-system")
-  implicit val materializer : ActorMaterializer = ActorMaterializer()
-  // needed for the future flatMap/onComplete in the end
-  implicit val executionContext : ExecutionContextExecutor = system.dispatcher
+object WebSocketServer extends SubscriptionSupport {
+  implicit val system = ActorSystem("server")
+  implicit val materializer = ActorMaterializer()
+  val logger = Logging(system, getClass)
 
-  val executor = Executor(Schema.createSchema)
+  import system.dispatcher
 
+  implicit val timeout = Timeout(10 seconds)
 
+  val articlesView = system.actorOf(Props[ArticleView])
+  val articlesSink = Sink.fromSubscriber(ActorSubscriber[ArticleEvent](articlesView))
 
-  def executeQuery(query: String, operation: Option[String], variables: JsObject = JsObject.empty) = {
+  val authorsView = system.actorOf(Props[AuthorView])
+  val authorsSink = Sink.fromSubscriber(ActorSubscriber[AuthorEvent](authorsView))
+
+  val eventStore = system.actorOf(Props[MemoryEventStore])
+  val eventStorePublisher =
+    Source.fromPublisher(ActorPublisher[Event](eventStore))
+      .runWith(Sink.asPublisher(fanout = true))
+
+  val subscriptionEventPublisher = system actorOf Props(new SubscriptionEventPublisher(eventStorePublisher))
+
+  // Connect event store to views
+  Source.fromPublisher(eventStorePublisher).collect { case event: ArticleEvent ⇒ event }.to(articlesSink).run()
+  Source.fromPublisher(eventStorePublisher).collect { case event: AuthorEvent ⇒ event }.to(authorsSink).run()
+
+  val ctx = Ctx(authorsView, articlesView, eventStore, system.dispatcher, timeout)
+
+  val executor = Executor(schema.createSchema)
+
+  def executeQuery(query: String, operation: Option[String], variables: JsObject = JsObject.empty) =
     QueryParser.parse(query) match {
-      case Success(queryAst) =>
+      case Success(queryAst) ⇒
         queryAst.operationType(operation) match {
-            // Subbscription queries should be handled by WS
-          case Some(OperationType.Subscription) =>
-            complete(ToResponseMarshallable(
-              BadRequest -> JsString("Subscriptions not supported via HTTP. Use WebSockets")
-            ))
+
+          case Some(OperationType.Subscription) ⇒
+            complete(ToResponseMarshallable(BadRequest → JsString("Subscriptions not supported via HTTP. Use WebSockets")))
+
           // all other queries will just return normal JSON response
           case _ ⇒
             complete(executor.execute(queryAst, ctx, (), operation, variables)
@@ -49,20 +71,51 @@ object WebSocketServer {
                 case error: ErrorWithResolver ⇒ InternalServerError → error.resolveError
               })
         }
+
+      case Failure(error: SyntaxError) ⇒
+        complete(ToResponseMarshallable(BadRequest → JsObject(
+          "syntaxError" → JsString(error.getMessage),
+          "locations" → JsArray(JsObject(
+            "line" → JsNumber(error.originalError.position.line),
+            "column" → JsNumber(error.originalError.position.column))))))
+
+      case Failure(error) ⇒
+        complete(ToResponseMarshallable(InternalServerError -> JsString(error.getMessage)))
     }
-  }
 
+  val route: Route =
+    path("graphql") {
+      post {
+        // Handle standard post request
+        entity(as[JsValue]) { requestJson ⇒
+          val JsObject(fields) = requestJson
 
-  def run(): Unit = {
+          val JsString(query) = fields("query")
 
+          val operation = fields.get("operationName") collect {
+            case JsString(op) ⇒ op
+          }
 
-    val route =
-      path("ws") {
-        handleWebSocketMessages(greeter)
+          val vars = fields.get("variables") match {
+            case Some(obj: JsObject) ⇒ obj
+            case _ ⇒ JsObject.empty
+          }
+
+          executeQuery(query, operation, vars)
+        }
+      } ~
+        // Handle websocket requests
+        get(handleWebSocketMessages(graphQlSubscriptionSocket(subscriptionEventPublisher, ctx)))
+    } ~
+      (get & path("client")) {
+        getFromResource("web/client.html")
+      } ~
+      get {
+        getFromResource("web/graphiql.html")
       }
 
-    val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
-
+  def run() =  {
+    val bindingFuture = Http().bindAndHandle(route, "0.0.0.0", 8080)
     println(s"Server online at http://localhost:8080/\nPress RETURN to stop...")
 
     StdIn.readLine()
@@ -72,3 +125,26 @@ object WebSocketServer {
       .onComplete(_ => system.terminate()) // and shutdown when done
   }
 }
+
+
+
+/*def run(): Unit = {
+
+
+  val route =
+    path("ws") {
+      handleWebSocketMessages(greeter)
+    }
+
+  val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
+
+  println(s"Server online at http://localhost:8080/\nPress RETURN to stop...")
+
+  StdIn.readLine()
+
+  bindingFuture
+    .flatMap(_.unbind()) // trigger unbinding from the port
+    .onComplete(_ => system.terminate()) // and shutdown when done
+}
+}
+*/

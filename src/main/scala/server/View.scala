@@ -2,11 +2,27 @@ package server
 
 import generic.View
 
-class MessageView extends View[Message, MessageEvent] {
+class ArticleView extends View[Article, ArticleEvent] {
   val handleEvent: Handler = {
-    case event: MessageCreated ⇒
-      add(Message(event.id, event.subject))
-    case event: MessageDeleted ⇒
+    case event: ArticleCreated ⇒
+      add(Article(event.id, event.version, event.title, event.authorId, event.text))
+    case event: ArticleTextChanged ⇒
+      update(event)(_.copy(version = event.version, text = event.text))
+    case event: ArticleDeleted ⇒
+      delete(event)
+  }
+}
+
+class AuthorView extends View[Author, AuthorEvent] {
+  val handleEvent: Handler = {
+    case event: AuthorCreated ⇒
+      add(Author(event.id, event.version, event.firstName, event.lastName))
+    case event: AuthorNameChanged ⇒
+      update(event)(_.copy(
+        version = event.version,
+        firstName = event.firstName,
+        lastName = event.lastName))
+    case event: AuthorDeleted ⇒
       delete(event)
   }
 }

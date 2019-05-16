@@ -2,67 +2,87 @@ package server
 
 import akka.actor.ActorRef
 import akka.util.Timeout
+import generic.{Event, View, Versioned}
+import generic.View.Get
 import sangria.execution.UserFacingError
 import sangria.schema._
 import sangria.macros.derive._
 import akka.pattern.ask
-import server.generic.View
-import shapeless.ops.zipper.Get
 
 import scala.annotation.unchecked.uncheckedVariance
 import scala.collection.immutable.ListMap
 import scala.concurrent.ExecutionContext
 import scala.reflect.ClassTag
 
-object Schema {
-  case class MutationError(mess : String) extends Exception(mess) with UserFacingError
+object schema {
+  case class MutationError(message: String) extends Exception(message) with UserFacingError
+  case class SubscriptionField[+T : ClassTag](tpe: ObjectType[Ctx, T @uncheckedVariance]) {
+    lazy val clazz = implicitly[ClassTag[T]].runtimeClass
+
+    def value(v: Any): Option[T] = v match {
+      case v if clazz.isAssignableFrom(v.getClass) ⇒ Some(v.asInstanceOf[T])
+      case _ ⇒ None
+    }
+  }
+
+  val EventType = InterfaceType("Event", fields[Ctx, Event](
+    Field("id", StringType, resolve = _.value.id),
+    Field("version", LongType, resolve = _.value.version)))
+
+  val AuthorCreatedType = deriveObjectType[Unit, AuthorCreated](Interfaces(EventType))
+  val AuthorNameChangedType = deriveObjectType[Unit, AuthorNameChanged](Interfaces(EventType))
+  val AuthorDeletedType = deriveObjectType[Unit, AuthorDeleted](Interfaces(EventType))
+
+  val ArticleCreatedType = deriveObjectType[Unit, ArticleCreated](Interfaces(EventType))
+  val ArticleTextChangedType = deriveObjectType[Unit, ArticleTextChanged](Interfaces(EventType))
+  val ArticleDeletedType = deriveObjectType[Unit, ArticleDeleted](Interfaces(EventType))
+
+  val SubscriptionFields = ListMap[String, SubscriptionField[Event]](
+    "authorCreated" → SubscriptionField(AuthorCreatedType),
+    "authorNameChanged" → SubscriptionField(AuthorNameChangedType),
+    "authorDeleted" → SubscriptionField(AuthorDeletedType),
+    "articleCreated" → SubscriptionField(ArticleCreatedType),
+    "articleTextChanged" → SubscriptionField(ArticleTextChangedType),
+    "articleDeleted" → SubscriptionField(ArticleDeletedType))
+
+  def subscriptionFieldName(event: Event) =
+    SubscriptionFields.find(_._2.clazz.isAssignableFrom(event.getClass)).map(_._1)
 
   def createSchema(implicit timeout: Timeout, ec: ExecutionContext) = {
+    val VersionedType = InterfaceType("Versioned", fields[Ctx, Versioned](
+      Field("id", StringType, resolve = _.value.id),
+      Field("version", LongType, resolve = _.value.version)))
 
-    // Derive schema from model
-    implicit val MessageType = deriveObjectType[Repo, Message]()
+    implicit val AuthorType = deriveObjectType[Unit, Author](Interfaces(VersionedType))
+
+    implicit val ArticleType = deriveObjectType[Ctx, Article](
+      Interfaces(VersionedType),
+      ReplaceField("authorId", Field("author", OptionType(AuthorType), resolve = c ⇒
+        (c.ctx.authors ? Get(c.value.authorId)).mapTo[Option[Author]])))
 
     val IdArg = Argument("id", StringType)
     val OffsetArg = Argument("offset", OptionInputType(IntType), 0)
     val LimitArg = Argument("limit", OptionInputType(IntType), 100)
 
-    def entityFields[T](name: String,
-                        tpe: ObjectType[Repo, T],
-                        actor: Repo => ActorRef) =
-      fields[Repo, Any](
+    def entityFields[T](name: String, tpe: ObjectType[Ctx, T], actor: Ctx ⇒ ActorRef) = fields[Ctx, Any](
       Field(name, OptionType(tpe),
         arguments = IdArg :: Nil,
-        resolve = c => (actor(c.ctx) ? Get(c.arg(IdArg.name))).mapTo[Option[T]]),
+        resolve = c ⇒ (actor(c.ctx) ? Get(c.arg(IdArg))).mapTo[Option[T]]),
       Field(name + "s", ListType(tpe),
         arguments = OffsetArg :: LimitArg :: Nil,
-        resolve = c => (actor(c.ctx) ? View.List(c.arg(OffsetArg), c.arg(LimitArg))).mapTo[Seq[T]]))
+        resolve = c ⇒ (actor(c.ctx) ? View.List(c.arg(OffsetArg), c.arg(LimitArg))).mapTo[Seq[T]]))
 
-    val Query = ObjectType(
-      "Query",
-      entityFields[Message]("message", MessageType, _.messages)
-      )
+    val QueryType = ObjectType("Query",
+      entityFields[Author]("author", AuthorType, _.authors) ++
+      entityFields[Article]("article", ArticleType, _.articles))
+
+    val MutationType = deriveContextObjectType[Ctx, Mutation, Any](identity)
+
+    val SubscriptionType = ObjectType("Subscription",
+      SubscriptionFields.toList.map { case (name, field) ⇒
+        Field(name, OptionType(field.tpe), resolve = (c: Context[Ctx, Any]) ⇒ field.value(c.value))
+      })
+
+    Schema(QueryType, Some(MutationType), Some(SubscriptionType))
   }
 }
-
-/* From docs:
-The resolve argument of a Field expects a function of type Context[Ctx, Val] ⇒ Action[Ctx, Res]. As you can see, the result of the resolve is an Action type which can take different shapes. Here is the list of supported actions:
-
-    Value - a simple value result. If you want to indicate an error, you need to throw an exception
-    TryValue - a scala.util.Try result
-    FutureValue - a Future result
-    PartialValue - a partially successful result with a list of errors
-    PartialFutureValue - a Future of partially successful result
-    DeferredValue - used to return a Deferred result (see the Deferred Values and Resolver section for more details)
-    DeferredFutureValue - the same as DeferredValue but allows you to return Deferred inside of a Future
-    UpdateCtx - allows you to transform a Ctx object. The transformed context object would be available for nested sub-objects and subsequent sibling fields in case of mutation (since execution of mutation queries is strictly sequential). You can find an example of its usage in the Authentication and Authorisation section.
-
-Normally the library is able to automatically infer the Action type, so that you don’t need to specify it explicitly.
-
-
-Many schema elements, like ObjectType, Field or Schema itself, take two type parameters: Ctx and Val:
-
-    Val - represent values that are returned by the resolve function and given to the resolve function as a part of the Context. In the schema example, Val can be a Human, Droid, String, etc.
-    Ctx - represents some contextual object that flows across the whole execution (and doesn’t change in most of the cases). It can be provided to execution by the user in order to help fulfill the GraphQL query. A typical example of such a context object is a service or repository object that is able to access a database. In the example schema, some of the fields (like droid or human) make use of it in order to access the character repository.
-
-
- */

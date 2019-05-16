@@ -6,8 +6,8 @@ import database.dbWrapper.traits.Schema
 
 
 
-class Mailbox {
-}
+//class Mailbox {
+//}
 
 object MailBox extends Schema {
   object Props {
