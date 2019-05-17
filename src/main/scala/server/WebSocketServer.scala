@@ -12,6 +12,7 @@ import akka.stream.ActorMaterializer
 import akka.stream.actor.{ActorPublisher, ActorSubscriber}
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.Timeout
+import ch.megard.akka.http.cors.scaladsl.CorsDirectives._
 import generic.{Event, MemoryEventStore}
 import sangria.ast.OperationType
 import sangria.execution.{ErrorWithResolver, Executor, QueryAnalysisError}
@@ -83,7 +84,7 @@ object WebSocketServer extends SubscriptionSupport {
         complete(ToResponseMarshallable(InternalServerError -> JsString(error.getMessage)))
     }
 
-  val route: Route =
+  val route: Route = cors() { //todo : finer cors grain than default
     path("graphql") {
       post {
         // Handle standard post request
@@ -113,9 +114,10 @@ object WebSocketServer extends SubscriptionSupport {
       get {
         getFromResource("web/graphiql.html")
       }
+  }
 
   def run() =  {
-    val bindingFuture = Http().bindAndHandle(route, "0.0.0.0", 8080)
+    val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
     println(s"Server online at http://localhost:8080/\nPress RETURN to stop...")
 
     StdIn.readLine()

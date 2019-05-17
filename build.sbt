@@ -40,6 +40,7 @@ lazy val server = (project in file("server"))
       "com.typesafe.akka" %% "akka-http"   % "10.1.8",
       "com.typesafe.akka" %% "akka-stream" % "2.5.19",
       "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.8",
+      "ch.megard" %% "akka-http-cors" % "0.4.0",
       "org.sangria-graphql" %% "sangria" % "1.4.2",
       "org.sangria-graphql" %% "sangria-spray-json" % "1.0.1",
       "org.sangria-graphql" %% "sangria-akka-streams" % "1.0.1"
