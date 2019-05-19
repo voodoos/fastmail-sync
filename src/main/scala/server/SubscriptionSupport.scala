@@ -14,7 +14,9 @@ trait SubscriptionSupport {
 
   import SubscriptionActor._
 
-  def graphQlSubscriptionSocket(publisher: ActorRef, ctx: Ctx)(implicit system: ActorSystem, materializer: ActorMaterializer, timeout: Timeout) = {
+  def graphQlSubscriptionSocketHandler
+  (publisher: ActorRef, ctx: Ctx)
+  (implicit system: ActorSystem, materializer: ActorMaterializer, timeout: Timeout): Flow[Message, TextMessage.Strict, NotUsed] = {
 
     val subscriptionActor = system.actorOf(Props(new SubscriptionActor(publisher, ctx)))
 
@@ -39,6 +41,18 @@ trait SubscriptionSupport {
       }
 
     Flow.fromSinkAndSource(incoming, outgoing)
+
+    /*
+    *     +----------------------------------------------+
+    *     | Resulting Flow[I, O, NotUsed]                |
+    *     |                                              |
+    *     |  +---------+                  +-----------+  |
+    *     |  |         |                  |           |  |
+    * I  ~~> | Sink[I] | [no-connection!] | Source[O] | ~~> O
+    *     |  |         |                  |           |  |
+    *     |  +---------+                  +-----------+  |
+    *     +----------------------------------------------+
+    */
   }
 
 }

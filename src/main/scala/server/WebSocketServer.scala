@@ -125,7 +125,7 @@ object WebSocketServer extends SubscriptionSupport {
         }
       } ~
         // Handle websocket upgrade requests
-        get(handleWebSocketMessages(graphQlSubscriptionSocket(subscriptionEventPublisher, ctx)))
+        get(handleWebSocketMessages(graphQlSubscriptionSocketHandler(subscriptionEventPublisher, ctx)))
     } ~
       (get & path("client")) {
         getFromResource("web/client.html")
