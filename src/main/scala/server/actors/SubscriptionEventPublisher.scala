@@ -1,10 +1,10 @@
-package server
+package server.actors
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Terminated}
 import akka.stream.scaladsl.{Sink, Source}
 import akka.stream.{ActorMaterializer, OverflowStrategy}
-import generic.Event
 import org.reactivestreams.Publisher
+import server.generic.Event
 
 object SubscriptionEventPublisher {
   case object Join

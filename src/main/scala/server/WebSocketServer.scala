@@ -18,6 +18,7 @@ import sangria.ast.OperationType
 import sangria.execution.{ErrorWithResolver, Executor, QueryAnalysisError}
 import sangria.marshalling.sprayJson._
 import sangria.parser.{QueryParser, SyntaxError}
+import server.actors.{SubscriptionEventPublisher, SubscriptionSupport}
 import spray.json._
 
 import scala.concurrent.duration._

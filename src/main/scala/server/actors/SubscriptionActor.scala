@@ -1,21 +1,23 @@
-package server
+package server.actors
 
 import akka.actor.{Actor, ActorLogging, ActorRef}
 import akka.util.Timeout
-import generic.Event
 import sangria.ast.OperationType
 import sangria.execution.{Executor, PreparedQuery}
 import sangria.marshalling.sprayJson._
 import sangria.parser.QueryParser
+import server.generic.Event
+import server.{Ctx, schema}
 import spray.json._
 
 import scala.util.{Failure, Success}
 
 object SubscriptionActor extends DefaultJsonProtocol {
   sealed trait SubscriptionMessage
-  case class Subscribe(query: String, operation: Option[String])
   case class SubscriptionAccepted() extends SubscriptionMessage
   case class QueryResult(json: JsValue) extends SubscriptionMessage
+
+  case class Subscribe(query: String, operation: Option[String])
   case class Connected(outgoing: ActorRef)
   case class PreparedQueryContext(query: PreparedQuery[Ctx, Any, JsObject])
 
