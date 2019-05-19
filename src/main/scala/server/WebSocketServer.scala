@@ -26,13 +26,13 @@ import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
 object WebSocketServer extends SubscriptionSupport {
-  implicit val system = ActorSystem("server")
-  implicit val materializer = ActorMaterializer()
+  implicit val system: ActorSystem = ActorSystem("server")
+  implicit val materializer: ActorMaterializer = ActorMaterializer()
   val logger = Logging(system, getClass)
 
   import system.dispatcher
 
-  implicit val timeout = Timeout(10 seconds)
+  implicit val timeout: Timeout = Timeout(10 seconds)
 
   val articlesView = system.actorOf(Props[ArticleView])
   val articlesSink = Sink.fromSubscriber(ActorSubscriber[ArticleEvent](articlesView))
@@ -48,64 +48,83 @@ object WebSocketServer extends SubscriptionSupport {
   val subscriptionEventPublisher = system actorOf Props(new SubscriptionEventPublisher(eventStorePublisher))
 
   // Connect event store to views
-  Source.fromPublisher(eventStorePublisher).collect { case event: ArticleEvent ⇒ event }.to(articlesSink).run()
-  Source.fromPublisher(eventStorePublisher).collect { case event: AuthorEvent ⇒ event }.to(authorsSink).run()
+  Source.fromPublisher(eventStorePublisher).collect {
+    case event: ArticleEvent ⇒ event
+  }.to(articlesSink).run()
+  Source.fromPublisher(eventStorePublisher).collect {
+    case event: AuthorEvent ⇒ event
+  }.to(authorsSink).run()
 
-  val ctx = Ctx(authorsView, articlesView, eventStore, system.dispatcher, timeout)
+  // The ExecutionContext
+  private val ctx = Ctx(authorsView, articlesView, eventStore, system.dispatcher, timeout)
 
-  val executor = Executor(schema.createSchema)
+  // The Sangria executor
+  private val executor = Executor(schema.createSchema)
 
-  def executeQuery(query: String, operation: Option[String], variables: JsObject = JsObject.empty) =
+  private def executeQuery(query: String, operation: Option[String], variables: JsObject = JsObject.empty) =
     QueryParser.parse(query) match {
-      case Success(queryAst) ⇒
+      case Success(queryAst) =>
         queryAst.operationType(operation) match {
 
           case Some(OperationType.Subscription) ⇒
             complete(ToResponseMarshallable(BadRequest → JsString("Subscriptions not supported via HTTP. Use WebSockets")))
 
           // all other queries will just return normal JSON response
-          case _ ⇒
-            complete(executor.execute(queryAst, ctx, (), operation, variables)
-              .map(OK → _)
+          case _ =>
+            complete(
+              executor.execute(queryAst, ctx, (), operation, variables
+              ).map(OK -> _)
               .recover {
-                case error: QueryAnalysisError ⇒ BadRequest → error.resolveError
-                case error: ErrorWithResolver ⇒ InternalServerError → error.resolveError
+                case error: QueryAnalysisError =>
+                  BadRequest -> error.resolveError
+                case error: ErrorWithResolver =>
+                  InternalServerError -> error.resolveError
               })
         }
 
-      case Failure(error: SyntaxError) ⇒
+      case Failure(error: SyntaxError) =>
         complete(ToResponseMarshallable(BadRequest → JsObject(
-          "syntaxError" → JsString(error.getMessage),
-          "locations" → JsArray(JsObject(
-            "line" → JsNumber(error.originalError.position.line),
-            "column" → JsNumber(error.originalError.position.column))))))
+          "syntaxError" -> JsString(error.getMessage),
+          "locations" -> JsArray(JsObject(
+            "line" -> JsNumber(error.originalError.position.line),
+            "column" -> JsNumber(error.originalError.position.column)
+          ))
+        )))
 
-      case Failure(error) ⇒
-        complete(ToResponseMarshallable(InternalServerError -> JsString(error.getMessage)))
+      case Failure(error) =>
+        complete(
+          ToResponseMarshallable(InternalServerError ->
+            JsString(error.getMessage)
+          )
+        )
     }
 
   val route: Route = cors() { //todo : finer cors grain than default
     path("graphql") {
       post {
         // Handle standard post request
-        entity(as[JsValue]) { requestJson ⇒
+        entity(as[JsValue]) { requestJson =>
+          // Get all request fields (using pattern matching)
           val JsObject(fields) = requestJson
 
+          // Get content of the query field
           val JsString(query) = fields("query")
 
+          // Get the operation from the query (should be a string)
           val operation = fields.get("operationName") collect {
-            case JsString(op) ⇒ op
+            case JsString(op) => op
           }
 
+          // Get variables
           val vars = fields.get("variables") match {
-            case Some(obj: JsObject) ⇒ obj
-            case _ ⇒ JsObject.empty
+            case Some(obj: JsObject) => obj
+            case _ => JsObject.empty
           }
 
           executeQuery(query, operation, vars)
         }
       } ~
-        // Handle websocket requests
+        // Handle websocket upgrade requests
         get(handleWebSocketMessages(graphQlSubscriptionSocket(subscriptionEventPublisher, ctx)))
     } ~
       (get & path("client")) {
@@ -127,26 +146,3 @@ object WebSocketServer extends SubscriptionSupport {
       .onComplete(_ => system.terminate()) // and shutdown when done
   }
 }
-
-
-
-/*def run(): Unit = {
-
-
-  val route =
-    path("ws") {
-      handleWebSocketMessages(greeter)
-    }
-
-  val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
-
-  println(s"Server online at http://localhost:8080/\nPress RETURN to stop...")
-
-  StdIn.readLine()
-
-  bindingFuture
-    .flatMap(_.unbind()) // trigger unbinding from the port
-    .onComplete(_ => system.terminate()) // and shutdown when done
-}
-}
-*/
