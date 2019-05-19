@@ -7,7 +7,7 @@ import com.sun.mail.imap.IMAPFolder
 import traits._
 
 import collection.JavaConverters._
-import scala.util.{Failure, Success, Using}
+import tools.{Failure, Success, Using}
 
 
 

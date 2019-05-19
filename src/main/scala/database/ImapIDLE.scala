@@ -6,7 +6,7 @@ import com.sun.mail.imap.IMAPFolder
 import javax.mail.Folder
 import javax.mail.event.{MessageChangedEvent, MessageCountAdapter, MessageCountEvent}
 
-import scala.util.Using
+import tools.Using
 
 class ImapIDLE(val client : ImapAccount, val folder: Folder) extends Runnable {
 
