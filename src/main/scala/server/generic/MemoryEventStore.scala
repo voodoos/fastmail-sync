@@ -12,10 +12,10 @@ class MemoryEventStore extends ActorPublisher[Event] {
   var eventBuffer = Vector.empty[Event]
 
   def receive = {
-    case AddEvent(event) if eventBuffer.size >= MaxBufferCapacity ⇒
+    case AddEvent(event) if eventBuffer.size >= MaxBufferCapacity =>
       sender() ! OverCapacity(event)
 
-    case LatestEventVersion(id) ⇒
+    case LatestEventVersion(id) =>
       val entityEvents = events.filter(_.id == id)
 
       if (entityEvents.nonEmpty)
@@ -23,7 +23,7 @@ class MemoryEventStore extends ActorPublisher[Event] {
       else
         sender() ! None
 
-    case AddEvent(event) ⇒
+    case AddEvent(event) =>
       val entityEvents = events.filter(_.id == event.id)
 
       if (entityEvents.isEmpty) {

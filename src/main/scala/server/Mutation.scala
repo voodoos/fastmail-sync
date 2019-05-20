@@ -3,7 +3,7 @@ package server
 import java.util.UUID
 
 import schema.MutationError
-import generic.View.Get
+import actors.View.Get
 import sangria.macros.derive.GraphQLField
 
 import akka.pattern.ask

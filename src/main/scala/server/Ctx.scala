@@ -5,7 +5,7 @@ import schema.MutationError
 import akka.actor.ActorRef
 import generic.Event
 import generic.MemoryEventStore._
-import generic.View.Get
+import actors.View.Get
 
 import akka.pattern.ask
 

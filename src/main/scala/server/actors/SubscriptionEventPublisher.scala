@@ -9,12 +9,14 @@ import server.generic.Event
 object SubscriptionEventPublisher {
   case object Join
 }
+
 class SubscriptionEventPublisher(publisher: Publisher[Event]) extends Actor with ActorLogging {
 
   import SubscriptionEventPublisher._
 
   implicit val materializer = ActorMaterializer()
 
+  // List of joined actors
   var subscribers: Set[ActorRef] = Set.empty
 
   Source.fromPublisher(publisher)
@@ -26,7 +28,7 @@ class SubscriptionEventPublisher(publisher: Publisher[Event]) extends Actor with
     case Join =>
       log.info(s"${sender()} joined.")
       subscribers += sender()
-      context.watch(sender())
+      context.watch(sender()) // Deathwatch. Wait for Terminated messages
 
     case Terminated(subscriber) =>
       log.info(s"${sender()} was terminated.")

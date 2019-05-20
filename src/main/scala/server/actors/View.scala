@@ -1,14 +1,13 @@
-package server.generic
-
-import language.postfixOps
+package server.actors
 
 import akka.actor.{ActorLogging, ActorRef}
-import akka.stream.actor.{OneByOneRequestStrategy, ActorSubscriber}
-
 import akka.stream.actor.ActorSubscriberMessage._
+import akka.stream.actor.{ActorSubscriber, OneByOneRequestStrategy}
+import server.generic.{Event, Versioned}
 
 import scala.collection.immutable.ListMap
 import scala.concurrent.duration._
+import scala.language.postfixOps
 
 abstract class View[Entity <: Versioned, Ev <: Event] extends ActorSubscriber with ActorLogging {
   import View._

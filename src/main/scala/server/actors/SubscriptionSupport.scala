@@ -11,9 +11,32 @@ import spray.json._
 
 import scala.util.{Success, Try}
 
+// This trait is implemented by WebSocketServer
 trait SubscriptionSupport {
 
   import SubscriptionActor._
+
+  // experimentation
+  protected def graphqlSubscriptionHandler
+  (implicit system: ActorSystem) = {
+    //Prepare actor to handle messages
+    val actor = system.actorOf(Props(new SubscriptionManager))
+
+    val incoming = Flow[Message]
+      .alsoTo(Sink.foreach(println(_)))
+      .collect {
+        // Discard byte messages and parse todo: more general messages for other
+        // purposes like fetching body of mail or attachments (but maybe get or post
+        // and not websocket are better suited for this.)
+        case TextMessage.Strict(input) => Try(input.parseJson.convertTo[Subscribe])
+      }
+      .collect { case Success(value) => value }
+      .alsoTo(Sink.foreach(println(_)))
+      // Send the message to an actor
+      .to(Sink.actorRef(actor, PoisonPill))
+
+    Flow.fromSinkAndSource(incoming, Source.empty)
+  }
 
   protected def graphQlSubscriptionSocketHandler
   (publisher: ActorRef, ctx: Ctx)

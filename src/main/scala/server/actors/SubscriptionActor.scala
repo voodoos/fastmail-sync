@@ -10,6 +10,7 @@ import server.generic.Event
 import server.{Ctx, schema}
 import spray.json._
 
+import scala.concurrent.ExecutionContextExecutor
 import scala.util.{Failure, Success}
 
 object SubscriptionActor extends DefaultJsonProtocol {
@@ -30,20 +31,28 @@ class SubscriptionActor(publisher: ActorRef, ctx: Ctx)
 
   import SubscriptionActor._
 
-  implicit val ec = context.system.dispatcher
+  private implicit val ec: ExecutionContextExecutor = context.system.dispatcher
 
   // The Sangria executor that is initialized with the schema and
   // will be used to execute queries:
-  val sangria_executor = Executor(schema.createSchema)
-  var subscriptions = Map.empty[String, Set[PreparedQueryContext]]
+  private val sangria_executor = Executor(schema.createSchema)
+  private var subscriptions = Map.empty[String, Set[PreparedQueryContext]]
 
+  // Messages handled by this actor:
   override def receive: Receive = {
     case Connected(outgoing) =>
-      publisher ! SubscriptionEventPublisher.Join
+      publisher ! SubscriptionEventPublisher.Join // Register this actor to the publisher
       context.become(connected(outgoing))
   }
 
-  def connected(outgoing: ActorRef): Receive = {
+  /*
+  Akka supports hotswapping the Actor’s message loop (e.g. its implementation) at runtime:
+  invoke the context.become method from within the Actor. become takes a PartialFunction[Any, Unit]
+  that implements the new message handler.
+  The hotswapped code is kept in a Stack which can be pushed and popped.
+   */
+
+  private def connected(outgoing: ActorRef): Receive = {
     case e: Subscribe =>
       log.info(s"Got sub: $e")
       prepareQuery(e)
@@ -67,12 +76,12 @@ class SubscriptionActor(publisher: ActorRef, ctx: Ctx)
       }
   }
 
-  def queryContextsFor(fieldName: Option[String]) = fieldName match {
+  private def queryContextsFor(fieldName: Option[String]) = fieldName match {
     case Some(name) => subscriptions.getOrElse(name, Set.empty[PreparedQueryContext])
     case _ => Set.empty[PreparedQueryContext]
   }
 
-  def prepareQuery(subscription: Subscribe) = {
+  private def prepareQuery(subscription: Subscribe) = {
     QueryParser.parse(subscription.query) match {
       case Success(ast) =>
         ast.operationType(subscription.operation) match {

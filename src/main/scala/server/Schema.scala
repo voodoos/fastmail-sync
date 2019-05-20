@@ -2,12 +2,13 @@ package server
 
 import akka.actor.ActorRef
 import akka.util.Timeout
-import generic.{Event, View, Versioned}
-import generic.View.Get
+import generic.{Event, Versioned}
+import actors.View.Get
 import sangria.execution.UserFacingError
 import sangria.schema._
 import sangria.macros.derive._
 import akka.pattern.ask
+import actors.View
 
 import scala.annotation.unchecked.uncheckedVariance
 import scala.collection.immutable.ListMap

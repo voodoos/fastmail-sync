@@ -1,6 +1,6 @@
 package server
 
-import generic.View
+import server.actors.View
 
 class ArticleView extends View[Article, ArticleEvent] {
   val handleEvent: Handler = {
