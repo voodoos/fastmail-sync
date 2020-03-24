@@ -9,5 +9,5 @@ object JsonProtocol extends DefaultJsonProtocol {
   implicit def ws_messageFormat[T : JsonFormat]: RootJsonFormat[WSMessage[T]]
   = jsonFormat2(WSMessage.apply[T])
 
-  implicit val messageFormat: RootJsonFormat[Message] = jsonFormat2(Message.apply)
+  implicit val emailFormat: RootJsonFormat[Email] = jsonFormat2(Email.apply)
 }
